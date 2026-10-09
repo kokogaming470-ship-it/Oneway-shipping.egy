@@ -1096,9 +1096,62 @@ function showFace(id){const u=S.users.find(x=>x.id===id);if(!u||!u.face)return;$
 const faceTh=uid=>{const u=S.users.find(x=>x.id===uid);return u&&u.face?`<img class="fth" src="${u.face}" onclick="showFace('${u.id}')" alt="">`:u&&u.noCam?' <small style="color:var(--wr)">(لا توجد كاميرا)</small>':''};
 
 const WAIT_EN='Please wait until one of our support team members is available. They will reply to you as soon as possible.',WAIT_AR='يرجى الانتظار حتى يتواجد أحد أعضاء الدعم الفني وسيرد عليك في أقرب وقت ممكن.',LAB_EN='🤖 [Automated reply written by AI, not a human agent]',LAB_AR='🤖 [رد آلي مكتوب بواسطة الذكاء الاصطناعي وليس موظفاً بشرياً]';
-const KW=/(شحنتي|بوليصة|امتى|إمتى|متى|هتوصل|توصل|وصول|ميعاد|موعد|تتبع|فين الشحنة|تأخر|تاخر|سعر|اسعار|أسعار|تكلفة|عرض سعر|فاتورة|جمرك|تخليص|حاوية|where is|when will|arriv|\beta\b|track|delay|price|cost|quote|invoice|customs|container|bill of lading|\bawb\b|my shipment|my cargo)/i;
+const KW=/(شحنتي|بوليصة|امتى|إمتى|متى|هتوصل|توصل|وصول|ميعاد|موعد|تتبع|فين الشحنة|تأخر|تاخر|سعر|اسعار|أسعار|تكلفة|عرض سعر|فاتورة|where is|when will|arriv|\beta\b|track|delay|price|cost|quote|invoice|bill of lading|\bawb\b|my shipment|my cargo)/i;
 const AI_URL=SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/dynamic-api';
-const AI_SYS="You are the AI assistant of ONEWAY Shipping & Int'l Transportation LLC, an independent freight forwarder in Egypt (est. 2015) offering international shipping and logistics on any transport mode for companies and individuals, with a global agent network. Office: 20 Mahmoud Ghoneim St, 6th District, Nasr City, Cairo. Phones: +201119300061 and +201006364983. Reply in the same language as the customer's last message, in 1-4 short, polite sentences. Answer simple general questions directly (greetings, the current date/time given in the prompt, general information about our services and how to reach us). NEVER invent or guess shipment status, arrival dates, prices, quotes, fees, customs outcomes, policies or any fact you were not given. If the customer asks about a specific shipment, delivery or arrival time, tracking, a price or quote, payment, a complaint, reply with exactly: [WAIT]. For simple general questions, just answer. Never say or imply you are human.";
+/* ===== site knowledge base: the AI searches this (taken from the site's own content) ===== */
+const KB=[
+{s:['نبذه','عنكم','about','تاسيس','تأسيس','founded','history','تاريخ','خبره','experience'],w:['شركه','company','ون واي','oneway','one way'],
+ a:'ون واي شركة رائدة في الشحن الدولي والتخليص، مقرها مصر وتأسست عام 2015. بنخدم شركات متعددة الجنسيات وأفراد عايزين ينقلوا بضايعهم حول العالم، بأسعار تنافسية وخدمة موثوقة وشفافة، وبخبرة تزيد عن 8 سنوات. عندنا شبكة عالمية من الوكلاء وحلول لوجستية متكاملة للشركات الصغيرة والمتوسطة.',
+ e:'ONEWAY is a leading international shipping and customs clearance company based in Egypt, founded in 2015. We serve multinational companies and individuals moving goods worldwide with competitive prices and reliable, transparent service, backed by 8+ years of experience and a global network of agents.'},
+{s:['صاحب','مالك','مؤسس','ceo','owner','founder','boss','رئيس','مدير','المدير','chairman','head'],w:['مين','who','الشركه'],
+ a:'الرئيس التنفيذي (CEO) المعروض على الموقع هو Mohammed Hamed.',e:'The CEO listed on our website is Mohammed Hamed.'},
+{s:['مطور','برمج','صمم','عمل الموقع','developer','designed','powered','built','website by'],w:['الموقع','site','website'],
+ a:'الموقع من تطوير Malek Mohammed (Powered By).',e:'This website is powered by Malek Mohammed.'},
+{s:['خدمات','services','بتقدموا','بتعملوا','تقدمون','تقدموا','offer','تعملوا'],w:['ايه','what','شغلكم','شغل'],
+ a:'خدماتنا: الشحن البحري (حاويات FCL وLCL لكل الموانئ الرئيسية)، الشحن الجوي للبضائع العاجلة والحساسة، النقل البري من الباب للباب داخل مصر ودول الجوار، التخليص الجمركي، ودعم العملاء عبر الموقع والمكالمات والواتساب.',
+ e:'Our services: sea freight (FCL/LCL containers to all major ports), air freight for urgent and sensitive cargo, door-to-door land transport in Egypt and neighbouring countries, customs clearance, and customer support via the website, calls and WhatsApp.'},
+{s:['بحري','بحرى','sea','حاويات','حاوية','fcl','lcl','container','ميناء','موانئ','port','سفينه','سفن'],w:['شحن','freight'],
+ a:'الشحن البحري: حاويات FCL وLCL إلى كل الموانئ الرئيسية بجداول أسبوعية وأسعار تنافسية. للسعر أو التفاصيل افتح طلب شحن من حسابك وفريقنا هيتابع معاك.',
+ e:'Sea freight: FCL and LCL containers to all major ports with weekly schedules and competitive rates. For prices or details, open a shipping request from your account and our team will follow up.'},
+{s:['جوي','جوى','air','طيران','طياره','airfreight','عاجل','urgent'],w:['شحن','freight'],
+ a:'الشحن الجوي: حلول سريعة للبضائع العاجلة والحساسة مع متابعة لحظة بلحظة.',e:'Air freight: fast solutions for urgent and sensitive cargo with step-by-step tracking.'},
+{s:['بري','برى','land','road','truck','شاحنه','نقل بري','باب لباب','door'],w:['نقل','transport'],
+ a:'النقل البري: نقل من الباب للباب داخل مصر ودول الجوار بأسطول موثوق.',e:'Land transport: door-to-door within Egypt and neighbouring countries with a reliable fleet.'},
+{s:['جمرك','جمركي','تخليص','customs','clearance','clear'],w:['اجراءات','إجراءات','papers'],
+ a:'التخليص الجمركي: بننهي الإجراءات الجمركية بسرعة ودقة عن طريق فريق متخصص. للتفاصيل افتح طلب تخليص جمركي من حسابك.',e:'Customs clearance: our specialised team completes customs procedures quickly and accurately. For details, open a customs clearance request from your account.'},
+{s:['خطوات','مراحل','steps','process','journey','رحله','بتشتغلوا ازاي','how it works','how do you work','بيتم ازاي'],w:['ازاي','كيف','how','شحنه'],
+ a:'رحلة شحنتك معانا 4 خطوات: 1) اطلب: اختار نوع الطلب وابعته من حسابك. 2) تسعير: بنبعتلك أفضل سعر ومسار. 3) شحن ومتابعة: بنتابع شحنتك خطوة بخطوة ونبقيك على اطلاع. 4) تسليم: بنسلّم بضاعتك ونقفل الطلب.',
+ e:'Your shipment journey has 4 steps: 1) Request: choose the request type and send it from your account. 2) Quote: we send you the best price and route. 3) Ship & follow-up: we track your shipment step by step. 4) Delivery: we deliver your goods and close the request.'},
+{s:['اطلب','طلب شحن','request','order','احجز','عايز اشحن','عاوز اشحن','اشحن','ship'],w:['ازاي','كيف','how','شحنه','شحنة'],
+ a:'عشان تطلب شحنة: سجّل دخولك من "تسجيل دخول العملاء"، افتح تبويب "طلب شحن"، اختار نوع الطلب واكتب التفاصيل (ولو عندك ملف أو صورة ارفعها)، وفريقنا هيتابع معاك.',
+ e:'To request a shipment: log in from "Customer login", open the "Shipping request" tab, choose the request type, write the details (you can attach a file or photo) and our team will follow up.'},
+{s:['تسجيل','سجل','حساب','دخول','login','register','account','signup','sign up','باسورد','كلمه المرور','password','بصمه'],w:['ازاي','كيف','how','عميل'],
+ a:'من زرار "تسجيل دخول العملاء" بتسجّل بالاسم والإيميل والتليفون وكلمة مرور. وبعد أول دخول تقدر تفعّل دخول أسرع بالبصمة أو بكود PIN قصير على جهازك.',
+ e:'Use the "Customer login" button to register with your name, email, phone and a password. After your first login you can enable faster sign-in with fingerprint or a short PIN on your device.'},
+{s:['اتصال','مكالمه','مكالمة','call','voice','video','فيديو','كاميرا','camera','شاشه','screen'],w:['اكلم','talk','speak'],
+ a:'تقدر تتصل بفريق الدعم صوت أو فيديو من داخل أي طلب مفتوح بزرار "اتصال"، وكمان نقدر نتواصل بالرسائل والصور والملفات والرسائل الصوتية.',
+ e:'You can call our support team (voice or video) from inside any open request using the "Call" button, and also send messages, photos, files and voice notes.'},
+{s:['عنوان','فين','مكان','مقر','موقع الشركه','address','location','where','office','مكتب','خريطه','map'],w:['مدينه نصر','nasr'],
+ a:'مقرنا: 20 شارع محمود غنيم، الحي السادس، مدينة نصر، القاهرة، مصر.',e:'Our office: 20 Mahmoud Ghoneim St, 6th District, Nasr City, Cairo, Egypt.'},
+{s:['تليفون','موبايل','رقم','واتس','whatsapp','phone','mobile','call you','tel','تواصل','contact','ايميل','email','mail','بريد','تيليجرام','telegram','فايبر','viber'],w:['اكلمكم','reach'],
+ a:'تواصل معانا: موبايل/واتساب 01119300061 أو 01006364983، والإيميل g.m@oneway-eg.com، وكمان على تيليجرام وفايبر. وتقدر تتواصل من الموقع نفسه من زرار "تواصل معنا".',
+ e:'Contact us: mobile/WhatsApp +201119300061 or +201006364983, email g.m@oneway-eg.com, also on Telegram and Viber. You can also reach us from the "Contact us" button on the site.'},
+{s:['لغه','لغات','language','languages','english','انجليزي','عربي'],w:['الموقع','site'],
+ a:'الموقع بيدعم لغات كتير، تقدر تغيّر اللغة من زرار 🌐 في أعلى الصفحة.',e:'The site supports many languages; change the language from the 🌐 button at the top of the page.'},
+{s:['دعم','support','مساعده','help','شكوى','complaint','مشكله','problem'],w:['فريق','team'],
+ a:'فريق الدعم بيرد عليك من خلال الموقع والمكالمات والواتساب. افتح طلب من حسابك واكتب مشكلتك وهنتابع معاك.',e:'Our support team replies through the website, calls and WhatsApp. Open a request from your account and describe your issue and we will follow up.'}
+];
+const kbNorm=t=>String(t||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\u0600-\u06FFa-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+const KB_STOP=new Set(['من','هو','هي','ما','ماذا','ايه','اي','في','علي','على','عن','انت','انا','لو','ممكن','عايز','عاوز','the','is','a','an','of','who','what','are','you','do','does','how','can','i','to','and','or','your','my','بتاع','بتاعه','دي','ده','هل','يا','كام','فين','ازاي','كيف']);
+function kbAnswer(q){const nq=kbNorm(q);if(!nq)return null;const toks=nq.split(' ').filter(x=>x.length>=2&&!KB_STOP.has(x));
+ let best=null,bs=0;
+ for(const p of KB){let sc=0;
+  const hit=(k)=>{const nk=kbNorm(k);if(!nk)return false;if(nk.includes(' '))return nq.includes(nk);return toks.some(t=>{const tt=t.replace(/^(ال|و|ب|ل|ك|ف)/,'').replace(/^(ال)/,''),nn=nk.replace(/^ال/,'');return tt===nn||(tt.length>=3&&nn.length>=3&&(tt.startsWith(nn)||nn.startsWith(tt)))})};
+  p.s.forEach(k=>{if(hit(k))sc+=3});p.w.forEach(k=>{if(hit(k))sc+=1});
+  if(sc>bs){bs=sc;best=p}}
+ return bs>=3?[best.e,best.a]:null}
+
+const AI_SYS="You are the friendly AI assistant of ONEWAY Shipping & Int'l Transportation LLC (Egypt). Chat naturally and warmly, like a helpful person, in the SAME language and dialect as the customer (Egyptian Arabic if they write Egyptian Arabic). Take part in a real conversation: use the conversation history, answer follow-up questions, and answer general questions too (greetings, small talk, the current date/time given in the prompt, general shipping and logistics knowledge). For anything about the company, use ONLY the company info below; if it is not there say you are not sure and that the support team will confirm. NEVER invent shipment status, arrival dates, prices, quotes, fees, customs results or policies. If the customer asks about the status of a specific shipment, a price or quote, payment, or makes a complaint, reply with exactly: [WAIT]. Keep replies short (1-5 sentences). Never say or imply you are human. COMPANY INFO: "+KB.map(p=>p.e).join(' ');
 const sgn=ms=>{const c=new AbortController();setTimeout(()=>c.abort(),ms);return c.signal};
 async function aiAsk(prompt){
  try{prompt='Current date/time in Cairo: '+new Date().toLocaleString('en-GB',{timeZone:'Africa/Cairo'})+'\n'+prompt}catch(e){}
@@ -1109,15 +1162,17 @@ async function aiAsk(prompt){
 function aiFaq(q){
  if(/(الساعة كام|الساعه كام|الوقت كام|كام الساعة|كام الساعه|الساعة كم|الوقت كم|what time|current time|time is it|time now)/i.test(q)){const n=new Date(),en=n.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'}),ar=n.toLocaleTimeString('ar-EG',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'});return['The time now in Cairo is '+en+'.','الساعة دلوقتي '+ar+' بتوقيت القاهرة.']}
  if(/(التاريخ|النهارده|النهاردة|اليوم كام|انهي يوم|أنهي يوم|what.{0,12}date|today.?s date|what day)/i.test(q)){const n=new Date(),en=n.toLocaleDateString('en-GB',{timeZone:'Africa/Cairo',weekday:'long',day:'numeric',month:'long',year:'numeric'}),ar=n.toLocaleDateString('ar-EG',{timeZone:'Africa/Cairo',weekday:'long',day:'numeric',month:'long',year:'numeric'});return['Today is '+en+'.','النهارده '+ar+'.']}
+ {const kb=kbAnswer(q);if(kb)return kb}
  if(/^\s*(مرحبا|مرحباً|اهلا|أهلا|السلام|هلا|صباح|مساء|hello|hi\b|hey|good (morning|evening|afternoon))/i.test(q))return['Hello and welcome to ONEWAY! How can we help you today? Please write the details of your request and our support team will follow up with you.','أهلاً بك في ONEWAY! كيف يمكننا مساعدتك اليوم؟ اكتب تفاصيل طلبك وسيتابعه معك فريق الدعم الفني.'];
  if(/(عنوان|فين مكان|مكانكم|رقم|تليفون|موبايل|تواصل|address|location|phone|contact|call you)/i.test(q))return['Our office: 20 Mahmoud Ghoneim St, 6th District, Nasr City, Cairo. Phones: +201119300061 and +201006364983.','مقرنا: 20 شارع محمود غنيم، الحي السادس، مدينة نصر، القاهرة. الهاتف: ‎+201119300061 و ‎+201006364983.'];
  if(/(خدمات|بتشحنوا|تشحنوا|شحن بحري|شحن جوي|شحن بري|services|do you ship|sea freight|air freight)/i.test(q))return['ONEWAY is an independent freight forwarder in Egypt (since 2015). We move cargo on any transport mode worldwide for companies and individuals, with a global network of agents.','ون واي شركة شحن دولي مستقلة في مصر منذ 2015. ننقل البضائع بأي وسيلة نقل حول العالم للشركات والأفراد، عبر شبكة عالمية من الوكلاء.'];
  if(/(شكرا|شكراً|thank)/i.test(q))return['You are welcome! We are happy to help.','عفواً! يسعدنا خدمتك.'];
- if(/(عامل ايه|عامل إيه|ازيك|إزيك|ازاي حالك|اخبارك|أخبارك|how are you)/i.test(q))return['I am doing well, thank you! How can I help you today?','الحمد لله تمام، شكراً لك! أقدر أساعدك في إيه النهارده؟'];
+ if(/^\s*(انت |إنت |انتو |إنتو )?(عامل ايه|عامل إيه|عاملين ايه|ازيك|إزيك|ازاي حالك|اخبارك|أخبارك|how are you)/i.test(q))return['I am doing well, thank you! How can I help you today?','الحمد لله تمام، شكراً لك! أقدر أساعدك في إيه النهارده؟'];
  if(/(انت مين|إنت مين|مين انت|مين إنت|who are you|are you (a )?(bot|human|robot|ai))/i.test(q))return['I am the AI assistant of ONEWAY Shipping. I can answer general questions, and our support team will handle anything specific about your shipment.','أنا المساعد الذكي لشركة ONEWAY للشحن. أقدر أجاوب على الأسئلة العامة، وفريق الدعم هيتابع معاك أي تفاصيل خاصة بشحنتك.'];
  if(/(ازاي اطلب|إزاي أطلب|كيف اطلب|كيف أطلب|عايز اشحن|عاوز اشحن|أريد شحن|اريد شحن|how (do i|to) (request|order|ship)|want to ship)/i.test(q))return['You can request a shipment from your account: open the "Shipping request" tab, choose the request type and write the details. Our team will follow up with you.','تقدر تطلب شحنة من حسابك: افتح تبويب "طلب شحن"، اختار نوع الطلب واكتب التفاصيل، وفريقنا هيتابع معاك.'];
  if(/(مع السلامة|مع السلامه|باي|bye|goodbye|see you)/i.test(q))return['Goodbye! Thank you for contacting ONEWAY.','مع السلامة! شكراً لتواصلك مع ONEWAY.'];
  if(/^\s*(تمام|ok|okay|اوك|أوك|حاضر|ماشي|good|great|تمام شكرا)\s*[.!]*\s*$/i.test(q))return['Great! Let us know if you need anything else.','تمام! لو محتاج أي حاجة تانية قولنا.'];
+ {const kb=kbAnswer(q);if(kb)return kb}
  return null}
 function aiTyp(id,on){const c=document.querySelector('#mtb .chat');let d=$('aityp');if(!on){if(d)d.remove();return}if(!c||cur!==id||d)return;d=document.createElement('div');d.id='aityp';d.className='m ai';d.textContent='🤖 الذكاء الاصطناعي يكتب...';c.appendChild(d);c.scrollTop=c.scrollHeight}
 let aiStat='';
