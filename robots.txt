@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://oneway-shippingegy.vercel.app/sitemap.xml
